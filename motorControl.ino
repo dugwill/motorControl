@@ -1,29 +1,30 @@
 //  Motor control testing form the Ali Express 24GP-2430 motor
-//  My Model number is DC24V169RPM-24v 169 Max RPM
-// 
-// The speed controll is inverted. A 0% duty cycle is full speed
-// 100% duty Cycle stops the motor
-// 
-// 
+//  My Model number is DC24V169RPM - 24v 169 Max RPM
+//  
+// The speed controll for this line of motors is inverted. 
+// A 0% duty cycle is full speed. 100% duty cycle stops the motor
+// For the TimerOne Library, 1023 is 100% duty cycle - full stop
+
 
 #include <TimerOne.h>
 
 // Constants
-const int CW=HIGH;
-const int CCW=LOW;
-const int maxSpeed=930;
+const int CW=HIGH; // Used to set the direction of motor to clockwise, looking at the front of the motor
+const int CCW=LOW; // Set direction to counter clockwise
+const int maxSpeed=0;
 const int stop=1023;
 
 // Motor Drive settings
-int speed=1023;
+int speed=1023;  // Start with the motor stopped
 bool direction = CW;
-int pwmFreq = 40; // In uS.  Take the inverse for Freq i.e. 1/40uS=25KHz range is 20KHz-30KHz
+int pwmFreq = 40; // Cycle duration in uSec.  Take the inverse for Freq i.e. 1/40uS=25KHz. Range is 20KHz-30KHz
 
 // Pin Definitions
 const int MOT_ENC_PIN = 2;  
 const int MOT_DIR_PIN = 8;
 const int MOT_PWM_PIN = 9;
 const int OUT_ENC_PIN = 3;
+const int SPEED_PIN = A0;
 
 // Motor Encoder Variables
 long mCnt,mPrevCnt,mCurrentCnt, mDiff;
@@ -33,13 +34,16 @@ float mRPM, calcOutRPM;
 long oCnt, oPrevCnt, oCurrentCnt, oDiff;
 float oRPM;
 
+//int speed;
+
 void setup(void)
 {
   // Initialize Pins as input
-  pinMode(MOT_ENC_PIN, INPUT_PULLUP);
+  pinMode(MOT_ENC_PIN, INPUT_PULLUP);  // Motor encoder output needs a pull-up
   pinMode(OUT_ENC_PIN, INPUT); 
-  pinMode(MOT_DIR_PIN, OUTPUT);  //direction control 
+  pinMode(MOT_DIR_PIN, OUTPUT);  // Motor direction control 
   pinMode(MOT_PWM_PIN, OUTPUT);  // PWM drive
+  //pinMode(SPEED_PIN, INPUT);
 
   // Calls to enable Timer1 for PWM
   Timer1.initialize(pwmFreq);
@@ -61,16 +65,21 @@ void setup(void)
  
 void loop(void)
 {
-  for (int i = stop; i > maxSpeed; i--)
+  // Read speed pin, invert for 2430 motor
+  speed=1023-analogRead(SPEED_PIN);
+    Serial.print("Speed: ");
+    Serial.println(speed);
+
+  for (int i = stop; i > speed; i--)
   {
     Timer1.setPwmDuty(MOT_PWM_PIN, i);
-    delay(10);
+    delay(1);
   }
   delay(3000);
-  for (int i = maxSpeed; i < stop; i++)
+  for (int i = speed; i < stop; i++)
   {
     Timer1.setPwmDuty(MOT_PWM_PIN, i);
-    delay(10);
+    delay(1);
   }
   direction=!direction;
   digitalWrite(MOT_DIR_PIN, direction);
