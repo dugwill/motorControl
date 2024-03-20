@@ -21,6 +21,9 @@ int speedCmd;
 bool direction = CW;
 int pwmFreq = 40; // Cycle duration in uSec.  Take the inverse for Freq i.e. 1/40uS=25KHz. Range is 20KHz-30KHz
 
+// Speed adjustment interval
+int sInterval=100;
+
 // Pin Definitions
 const int MOT_ENC_PIN = 2;  
 const int MOT_DIR_PIN = 8;
@@ -35,6 +38,10 @@ float mRPM, calcOutRPM;
 // Ouptut Encoder Variables
 long oCnt, oPrevCnt, oCurrentCnt, oDiff;
 float oRPM; 
+
+// Ouptut Encoder Variables
+long sCnt, sPrevCnt, sCurrentCnt, sDiff;
+float sRPM; 
 
 // Misc variables
 long printTime, printTimer=1000;
@@ -69,26 +76,30 @@ void setup(void)
  
 void loop(void)
 {
-  // Read speed pin, invert for 2430 motor
-    speedCmd=1023-analogRead(SPEED_PIN);
+  // Read speed cmd pin
+    speedCmd=analogRead(SPEED_PIN);
     
+    // Print ouput per PrintTimer
     if (millis()-printTime>printTimer){
         print();
         printTime=millis();
     }
 
-    if (millis()-pidTime>pidTimer){
-        updatePid();
-        pidTime=millis();
-    }
+    // Read the counters
+    sCurrentCnt=mCnt;
 
-    if (speed>speedCmd){
+    // Calculate the motor data
+    sDiff=sCurrentCnt-sPrevCnt;  // Calculate the number of encoder pulses
+    
+
+    if (sDiff>speedCmd){
         decel();
-        Timer1.setPwmDuty(MOT_PWM_PIN, 1023-speed);
     }
-    if (speed<speedCmd){
+    if (sDiff<speedCmd){
         accel();
     }
+    sPrevCnt=sCurrentCnt;
+    delay(sInterval);
 }
 
 void updatePid(){
@@ -141,8 +152,10 @@ void print(){
     oDiff=oCurrentCnt-oPrevCnt; // Calculate the number of encoder pulses
     oRPM=oDiff*60/12; // Correct for 12 pl/rev
     oPrevCnt=oCurrentCnt; // Update previous count
-
-    Serial.print("Output: diff: ");
+  
+    Serial.print("Speed CMD: ");
+    Serial.print(speedCmd);
+    Serial.print("   Output: diff: ");
     Serial.print(oDiff);
     Serial.print(" out RPM: ");
     Serial.print(oRPM);
