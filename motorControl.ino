@@ -29,12 +29,12 @@ const int OUT_ENC_PIN = 3;
 const int SPEED_PIN = A0;
 
 // Motor Encoder Variables
-long mCnt //,mPrevCnt,mCurrentCnt, mDiff;
-//float mRPM, calcOutRPM;
+long mCnt, mPrevCnt,mCurrentCnt, mDiff;
+float mRPM, calcOutRPM; 
 
 // Ouptut Encoder Variables
-long oCnt //, oPrevCnt, oCurrentCnt, oDiff;
-//float oRPM;
+long oCnt, oPrevCnt, oCurrentCnt, oDiff;
+float oRPM; 
 
 // Misc variables
 long printTime, printTimer=1000;
@@ -127,16 +127,11 @@ void outputInterrupt() {
  
 void print(){
     
-    // Motor Encoder Variables
-    long mPrevCnt,mCurrentCnt, mDiff;
-    float mRPM, calcOutRPM;
-
-    // Ouptut Encoder Variables
-    long oPrevCnt, oCurrentCnt, oDiff;
-    float oRPM;
+    // Read the counters
+    mCurrentCnt=mCnt;
+    oCurrentCnt=oCnt;
 
     // Calculate the motor data
-    // Read the counters
     mDiff=mCurrentCnt-mPrevCnt;  // Calculate the number of encoder pulses
     mRPM=mDiff*60/9; // Convert to pl/min and correct for 6 pl/rev
     calcOutRPM=mRPM/35.5;  // Calculate output RPM
