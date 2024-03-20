@@ -13,9 +13,11 @@ const int CW=HIGH; // Used to set the direction of motor to clockwise, looking a
 const int CCW=LOW; // Set direction to counter clockwise
 const int maxSpeed=0;
 const int stop=1023;
+const int PID_UPDATE_TIME=100;  // mSec
 
 // Motor Drive settings
 int speed=1023;  // Start with the motor stopped
+int speedCmd;
 bool direction = CW;
 int pwmFreq = 40; // Cycle duration in uSec.  Take the inverse for Freq i.e. 1/40uS=25KHz. Range is 20KHz-30KHz
 
@@ -27,14 +29,16 @@ const int OUT_ENC_PIN = 3;
 const int SPEED_PIN = A0;
 
 // Motor Encoder Variables
-long mCnt,mPrevCnt,mCurrentCnt, mDiff;
-float mRPM, calcOutRPM;
+long mCnt //,mPrevCnt,mCurrentCnt, mDiff;
+//float mRPM, calcOutRPM;
 
 // Ouptut Encoder Variables
-long oCnt, oPrevCnt, oCurrentCnt, oDiff;
-float oRPM;
+long oCnt //, oPrevCnt, oCurrentCnt, oDiff;
+//float oRPM;
 
-//int speed;
+// Misc variables
+long printTime, printTimer=1000;
+long pidTime, pidTimer=PID_UPDATE_TIME;
 
 void setup(void)
 {
@@ -47,7 +51,7 @@ void setup(void)
 
   // Calls to enable Timer1 for PWM
   Timer1.initialize(pwmFreq);
-  Timer1.pwm(MOT_PWM_PIN, 1023);  
+  Timer1.pwm(MOT_PWM_PIN, 0);  
   
   // Set Initial Direction
   digitalWrite(MOT_DIR_PIN, direction);
@@ -66,24 +70,48 @@ void setup(void)
 void loop(void)
 {
   // Read speed pin, invert for 2430 motor
-  speed=1023-analogRead(SPEED_PIN);
-    Serial.print("Speed: ");
-    Serial.println(speed);
+    speedCmd=1023-analogRead(SPEED_PIN);
+    
+    if (millis()-printTime>printTimer){
+        print();
+        printTime=millis();
+    }
 
-  for (int i = stop; i > speed; i--)
-  {
-    Timer1.setPwmDuty(MOT_PWM_PIN, i);
-    delay(1);
-  }
-  delay(3000);
-  for (int i = speed; i < stop; i++)
-  {
-    Timer1.setPwmDuty(MOT_PWM_PIN, i);
-    delay(1);
-  }
-  direction=!direction;
-  digitalWrite(MOT_DIR_PIN, direction);
+    if (millis()-pidTime>pidTimer){
+        updatePid();
+        pidTime=millis();
+    }
 
+    if (speed>speedCmd){
+        decel();
+        Timer1.setPwmDuty(MOT_PWM_PIN, 1023-speed);
+    }
+    if (speed<speedCmd){
+        accel();
+    }
+}
+
+void updatePid(){
+
+    // Motor Encoder Variables
+    long mPrevCnt,mCurrentCnt, mDiff;
+    float mRPM, calcOutRPM;
+
+    
+}
+
+void accel(){
+if(speed<1023){
+    speed++;
+  }
+  Timer1.setPwmDuty(MOT_PWM_PIN, 1023-speed);
+}
+
+void decel(){
+if(speed>0){
+    speed--;
+  }
+  Timer1.setPwmDuty(MOT_PWM_PIN, 1023-speed);
 }
 
 
@@ -97,3 +125,37 @@ void outputInterrupt() {
     oCnt++;
 }
  
+void print(){
+    
+    // Motor Encoder Variables
+    long mPrevCnt,mCurrentCnt, mDiff;
+    float mRPM, calcOutRPM;
+
+    // Ouptut Encoder Variables
+    long oPrevCnt, oCurrentCnt, oDiff;
+    float oRPM;
+
+    // Calculate the motor data
+    // Read the counters
+    mDiff=mCurrentCnt-mPrevCnt;  // Calculate the number of encoder pulses
+    mRPM=mDiff*60/9; // Convert to pl/min and correct for 6 pl/rev
+    calcOutRPM=mRPM/35.5;  // Calculate output RPM
+    mPrevCnt=mCurrentCnt;  // Update previous count
+
+    // Calculat the output encoder data
+    oDiff=oCurrentCnt-oPrevCnt; // Calculate the number of encoder pulses
+    oRPM=oDiff*60/12; // Correct for 12 pl/rev
+    oPrevCnt=oCurrentCnt; // Update previous count
+
+    Serial.print("Output: diff: ");
+    Serial.print(oDiff);
+    Serial.print(" out RPM: ");
+    Serial.print(oRPM);
+
+    Serial.print("     Motor: diff: ");
+    Serial.print(mDiff);
+    Serial.print(" motor RPM: ");
+    Serial.print(mRPM);
+    Serial.print(" Calc Output RPM: ");
+    Serial.println(calcOutRPM);
+}
